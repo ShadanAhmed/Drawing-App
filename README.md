@@ -1,6 +1,6 @@
-# drawing_app
+# Drawing App
 
-A new Flutter project.
+A drawing app created using flutter
 
 ## Getting Started
 
