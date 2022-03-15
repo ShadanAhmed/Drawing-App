@@ -230,6 +230,7 @@ class _HomeScreenState extends State<HomeScreen> {
               }
               drawingPaths.add(currentPath!);
               currentPath = null;
+              removedPath = [];
             }),
             child: LayoutBuilder(
                 builder: (_, constraints) => InkWell(
@@ -250,63 +251,67 @@ class _HomeScreenState extends State<HomeScreen> {
                                   const EdgeInsets.only(top: 8.0, right: 8.0),
                               child: Align(
                                 alignment: Alignment.topRight,
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.end,
-                                  children: [
-                                    Row(
-                                      mainAxisAlignment: MainAxisAlignment.end,
-                                      children: [
-                                        buildColorItem(backgroundColor, () {
-                                          setState(() {
-                                            currentSelectedColor = "background";
-                                          });
-                                        },
-                                            currentSelectedColor ==
-                                                "background"),
-                                        buildColorItem(color, () {
-                                          setState(() {
-                                            currentSelectedColor = "drawing";
-                                          });
-                                        }, currentSelectedColor == "drawing"),
-                                      ],
-                                    ),
-                                    buildOptionMenuItem(() {
-                                      setState(() {
-                                        if (drawingPaths.isNotEmpty) {
-                                          removedPath
-                                              .add(drawingPaths.removeLast());
-                                        }
-                                      });
-                                    }, const Icon(Icons.undo_rounded)),
-                                    buildOptionMenuItem(() {
-                                      setState(() {
-                                        if (removedPath.isNotEmpty) {
-                                          final lastPath =
-                                              removedPath.removeLast();
-                                          drawingPaths.add(lastPath);
-                                        }
-                                      });
-                                    }, const Icon(Icons.redo_rounded)),
-                                    Tooltip(
-                                      message: "Clear canvas",
-                                      child: buildOptionMenuItem(() {
+                                child: SingleChildScrollView(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                    children: [
+                                      Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.end,
+                                        children: [
+                                          buildColorItem(backgroundColor, () {
+                                            setState(() {
+                                              currentSelectedColor =
+                                                  "background";
+                                            });
+                                          },
+                                              currentSelectedColor ==
+                                                  "background"),
+                                          buildColorItem(color, () {
+                                            setState(() {
+                                              currentSelectedColor = "drawing";
+                                            });
+                                          }, currentSelectedColor == "drawing"),
+                                        ],
+                                      ),
+                                      buildOptionMenuItem(() {
                                         setState(() {
-                                          drawingPaths = [];
+                                          if (drawingPaths.isNotEmpty) {
+                                            removedPath
+                                                .add(drawingPaths.removeLast());
+                                          }
                                         });
-                                      }, const Icon(Icons.cleaning_services)),
-                                    ),
-                                    buildOptionMenuItem(() {
-                                      showColorPicker();
-                                    }, const Icon(Icons.colorize_rounded)),
-                                    buildOptionMenuItem(() {
-                                      showModalBottomSheet(
-                                          context: context,
-                                          builder: (context) {
-                                            return showBrushSizeBottomSheet(
-                                                context);
+                                      }, const Icon(Icons.undo_rounded)),
+                                      buildOptionMenuItem(() {
+                                        setState(() {
+                                          if (removedPath.isNotEmpty) {
+                                            final lastPath =
+                                                removedPath.removeLast();
+                                            drawingPaths.add(lastPath);
+                                          }
+                                        });
+                                      }, const Icon(Icons.redo_rounded)),
+                                      Tooltip(
+                                        message: "Clear canvas",
+                                        child: buildOptionMenuItem(() {
+                                          setState(() {
+                                            drawingPaths = [];
                                           });
-                                    }, const Icon(Icons.brush_sharp))
-                                  ],
+                                        }, const Icon(Icons.cleaning_services)),
+                                      ),
+                                      buildOptionMenuItem(() {
+                                        showColorPicker();
+                                      }, const Icon(Icons.colorize_rounded)),
+                                      buildOptionMenuItem(() {
+                                        showModalBottomSheet(
+                                            context: context,
+                                            builder: (context) {
+                                              return showBrushSizeBottomSheet(
+                                                  context);
+                                            });
+                                      }, const Icon(Icons.brush_sharp))
+                                    ],
+                                  ),
                                 ),
                               ),
                             )
