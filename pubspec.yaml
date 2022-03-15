@@ -40,6 +40,7 @@ dependencies:
   image_gallery_saver: ^1.7.1
   uuid: ^3.0.6
   share_plus: ^3.1.0
+  universal_html: ^2.0.8
 
 dev_dependencies:
   flutter_test:

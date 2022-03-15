@@ -1,13 +1,16 @@
+import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 import 'dart:ui';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'package:image_gallery_saver/image_gallery_saver.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:uuid/uuid.dart';
+import 'package:universal_html/html.dart' as html;
 
 const Color darkBlue = Color.fromARGB(255, 18, 32, 47);
 
@@ -36,7 +39,7 @@ class MyApp extends StatelessWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  List<CustomPath> path = [];
+  List<CustomPath> drawingPaths = [];
   CustomPath? currentPath;
   List<CustomPath> removedPath = [];
   Color color = Colors.black;
@@ -55,9 +58,49 @@ class _HomeScreenState extends State<HomeScreen> {
         actions: [
           IconButton(
             onPressed: () async {
-              if (await Permission.storage.status.isDenied) {
-                final status = await Permission.storage.request();
-                if (status.isGranted) {
+              if (!kIsWeb) {
+                if (await Permission.storage.status.isDenied) {
+                  final status = await Permission.storage.request();
+                  if (status.isGranted) {
+                    PictureRecorder pictureRecorder = PictureRecorder();
+                    Canvas canvas = Canvas(pictureRecorder);
+
+                    // Paint your canvas as you want
+
+                    final backgroundPaint = Paint()
+                      ..color = backgroundColor
+                      ..strokeWidth = 1
+                      ..style = PaintingStyle.fill;
+
+                    canvas.drawRect(
+                        Rect.fromLTWH(0, 0, MediaQuery.of(context).size.width,
+                            MediaQuery.of(context).size.height),
+                        backgroundPaint);
+                    for (CustomPath path in drawingPaths) {
+                      canvas.drawPath(path.path, path.paint);
+                    }
+
+                    Picture picture = pictureRecorder.endRecording();
+                    final image = await picture.toImage(
+                        MediaQuery.of(context).size.width.toInt(),
+                        MediaQuery.of(context).size.height.toInt());
+
+                    final bytes =
+                        await image.toByteData(format: ImageByteFormat.png);
+                    final result = await ImageGallerySaver.saveImage(
+                        Uint8List.fromList(bytes!.buffer.asUint8List()),
+                        quality: 60,
+                        name: const Uuid().v4());
+                    if (result["isSuccess"]) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text("Successfully saved")));
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                          content:
+                              Text("Some error occurred please try again!")));
+                    }
+                  }
+                } else {
                   PictureRecorder pictureRecorder = PictureRecorder();
                   Canvas canvas = Canvas(pictureRecorder);
 
@@ -72,7 +115,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       Rect.fromLTWH(0, 0, MediaQuery.of(context).size.width,
                           MediaQuery.of(context).size.height),
                       backgroundPaint);
-                  for (CustomPath path in path) {
+                  for (CustomPath path in drawingPaths) {
                     canvas.drawPath(path.path, path.paint);
                   }
 
@@ -81,15 +124,27 @@ class _HomeScreenState extends State<HomeScreen> {
                       MediaQuery.of(context).size.width.toInt(),
                       MediaQuery.of(context).size.height.toInt());
 
+                  final id = const Uuid().v4();
+
                   final bytes =
                       await image.toByteData(format: ImageByteFormat.png);
                   final result = await ImageGallerySaver.saveImage(
                       Uint8List.fromList(bytes!.buffer.asUint8List()),
                       quality: 60,
-                      name: const Uuid().v4());
+                      name: id);
+
+                  print(result);
+
                   if (result["isSuccess"]) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text("Successfully saved")));
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                      content: const Text("Successfully saved"),
+                      action: SnackBarAction(
+                          label: "Share",
+                          onPressed: () {
+                            Share.shareFiles(
+                                ['/storage/emulated/0/Pictures/$id.jpg']);
+                          }),
+                    ));
                   } else {
                     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
                         content:
@@ -111,7 +166,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     Rect.fromLTWH(0, 0, MediaQuery.of(context).size.width,
                         MediaQuery.of(context).size.height),
                     backgroundPaint);
-                for (CustomPath path in path) {
+                for (CustomPath path in drawingPaths) {
                   canvas.drawPath(path.path, path.paint);
                 }
 
@@ -124,27 +179,22 @@ class _HomeScreenState extends State<HomeScreen> {
 
                 final bytes =
                     await image.toByteData(format: ImageByteFormat.png);
-                final result = await ImageGallerySaver.saveImage(
-                    Uint8List.fromList(bytes!.buffer.asUint8List()),
-                    quality: 60,
-                    name: id);
+                final list = Uint8List.fromList(bytes!.buffer.asUint8List());
 
-                print(result);
+                final a = html.AnchorElement(
+                    href: 'data:image/jpeg;base64,${base64Encode(list)}');
 
-                if (result["isSuccess"]) {
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                    content: const Text("Successfully saved"),
-                    action: SnackBarAction(
-                        label: "Share",
-                        onPressed: () {
-                          Share.shareFiles(
-                              ['/storage/emulated/0/Pictures/$id.jpg']);
-                        }),
-                  ));
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                      content: Text("Some error occurred please try again!")));
-                }
+                // set the name of the file we want the image to get
+                // downloaded to
+                a.download = '$id.png';
+
+                // and we click the AnchorElement which downloads the image
+                a.click();
+                // finally we remove the AnchorElement
+                a.remove();
+
+                ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text("Image successfully saved!")));
               }
             },
             icon: const Icon(Icons.save),
@@ -176,9 +226,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 final newPath = currentPath!;
                 newPath.path.close();
                 newPath.paint.style = PaintingStyle.fill;
-                path.add(newPath);
+                drawingPaths.add(newPath);
               }
-              path.add(currentPath!);
+              drawingPaths.add(currentPath!);
               currentPath = null;
             }),
             child: LayoutBuilder(
@@ -192,8 +242,8 @@ class _HomeScreenState extends State<HomeScreen> {
                               width: constraints.widthConstraints().maxWidth,
                               height: constraints.heightConstraints().maxHeight,
                               child: CustomPaint(
-                                  painter: DrawingPainter(
-                                      currentPath, path, backgroundColor)),
+                                  painter: DrawingPainter(currentPath,
+                                      drawingPaths, backgroundColor)),
                             ),
                             Padding(
                               padding:
@@ -222,8 +272,9 @@ class _HomeScreenState extends State<HomeScreen> {
                                     ),
                                     buildOptionMenuItem(() {
                                       setState(() {
-                                        if (path.isNotEmpty) {
-                                          removedPath.add(path.removeLast());
+                                        if (drawingPaths.isNotEmpty) {
+                                          removedPath
+                                              .add(drawingPaths.removeLast());
                                         }
                                       });
                                     }, const Icon(Icons.undo_rounded)),
@@ -232,7 +283,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                         if (removedPath.isNotEmpty) {
                                           final lastPath =
                                               removedPath.removeLast();
-                                          path.add(lastPath);
+                                          drawingPaths.add(lastPath);
                                         }
                                       });
                                     }, const Icon(Icons.redo_rounded)),
@@ -240,7 +291,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                       message: "Clear canvas",
                                       child: buildOptionMenuItem(() {
                                         setState(() {
-                                          path = [];
+                                          drawingPaths = [];
                                         });
                                       }, const Icon(Icons.cleaning_services)),
                                     ),
